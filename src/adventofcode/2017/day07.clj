@@ -72,9 +72,16 @@ cntj (57)"))
          ((fn find-corrected-weight [{:keys [children weight unbalanced] :as node}]
             (if-let [unbalanced-child (first (filter :unbalanced children))]
               (find-corrected-weight unbalanced-child) ; child is cause of imbalance, look there
-              (let [[heaviest-child lightest-child] (reverse (sort-by :sum children))
-                    correction (- (:sum heaviest-child) (:sum lightest-child))]
-                (- (:weight heaviest-child) correction))))))]))
+              (let [freq->sum (->> children
+                                   (map :sum)
+                                   frequencies
+                                   set/map-invert)
+                    different-sum (get freq->sum 1) ; there is only one unbalanced node
+                    different? (comp #{different-sum} :sum)
+                    different-child (first (filter different? children))
+                    similar-child (first (remove different? children))
+                    correction (- (:sum different-child) (:sum similar-child))]
+                (- (:weight different-child) correction))))))]))
 
 (time
     (solutions input))
