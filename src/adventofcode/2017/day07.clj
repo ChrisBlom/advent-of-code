@@ -55,7 +55,7 @@ cntj (57)"))
   (let [name->node (into {} (map (juxt :name identity) input))
 
         root (first (set/difference (set (map :name input))
-                                    (mapcat :children input)))]
+                                    (set (mapcat :children input))))]
 
     [root
      (-> root
