@@ -24,7 +24,7 @@
    [0 0 1] ; z
    ])
 
-(def angle->direction
+(def compass-point->direction
   (let [with-negatives (concat basis (map (partial mapv -) basis))
         directions (map (partial mapv +) with-negatives (rest (cycle with-negatives)))]
     (zipmap '[n ne se s sw nw]
@@ -38,7 +38,7 @@
 (defn solution [x]
   (let [distances  (->> (format "[%s]" x)
                         read-string
-                        (map angle->direction)
+                        (map compass-point->direction)
                         (reductions (partial map +))
                         (map distance))]
     {:part-1 (last distances)
