@@ -15,8 +15,10 @@
 ;;      /    \
 ;;    -+      +--- z [ 0 0 1]
 ;;      \    /
-;;    sw +--+ se
+;;    sw +--+ se  <..... se = (+ z -x
 ;;      / s  \
+;;            \
+;;            -x
 
 (def basis
   [[1 0 0] ; x
@@ -25,7 +27,9 @@
    ])
 
 (def compass-point->direction
-  (let [with-negatives (concat basis (map (partial mapv -) basis))
+  (let [;; base directions for a full circle
+        with-negatives (concat basis (map (partial mapv -) basis))
+        ;; the direction is the sum of the adjacent two base directions
         directions (map (partial mapv +) with-negatives (rest (cycle with-negatives)))]
     (zipmap '[n ne se s sw nw]
             directions)))
