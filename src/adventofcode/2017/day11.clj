@@ -26,11 +26,11 @@
    [0 0 1] ; z
    ])
 
-(def compass-point->direction
+(def compass-point->cube-coordinate
   (let [;; base directions for a full circle
-        with-negatives (concat basis (map (partial mapv -) basis))
-        ;; the direction is the sum of the adjacent two base directions
-        directions (map (partial mapv +) with-negatives (rest (cycle with-negatives)))]
+        all-base-directions (concat basis (map (partial mapv -) basis))
+        ;; the cube coordinate is the sum of the adjacent two base directions
+        directions (map (partial mapv +) all-base-directions (rest (cycle all-base-directions)))]
     (zipmap '[n ne se s sw nw]
             directions)))
 
@@ -42,7 +42,7 @@
 (defn solution [x]
   (let [distances  (->> (format "[%s]" x)
                         read-string
-                        (map compass-point->direction)
+                        (map compass-point->cube-coordinate)
                         (reductions (partial map +))
                         (map distance))]
     {:part-1 (last distances)
