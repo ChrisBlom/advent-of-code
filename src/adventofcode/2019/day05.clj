@@ -54,9 +54,30 @@
    :in in
    :out out})
 
+
+(defn init-state
+  [intcode input]
+  {:pre [(sequential? input)]}
+  (new-state 0 intcode (apply list input) []))
+
+(defn- step-read
+  [{:keys [in] :as state} p1]
+  (assert (list? in))
+  #_(println "READ:" (peek in) "   inputs:" in )
+  (-> state
+      (update :instruction-pointer + 2)
+      (assoc-in [:buffer p1] (first in))
+      (update :in rest)))
+
+(step-read (init-state [1 2 3] [9 8  7 ])
+           0)
+
 (defn step-intcode
   [{:keys [instruction-pointer buffer in out]
     :as state}]
+  {:pre [(contains? buffer instruction-pointer)
+         (list? in)
+         (vector? out)]}
   (let [[opcode p1 p2 p3 :as instr] (subvec buffer instruction-pointer)
         {:keys [op ma mb mc]} (parse-opcode opcode)
         param1 (fn [] (memload buffer p1 mc))
@@ -76,14 +97,12 @@
                    out)
       ;; read
       3 (do (assert (seq in) "Cannot read from empty input")
-            (-> state
-                (update :instruction-pointer + 2)
-                (assoc :buffer (memset p1 (first in)))
-                (update in rest)))
+            (step-read state p1))
       ;; write
-      4 (-> state
-            (update :instruction-pointer + 2)
-            (update :out conj (param1)))
+      4 (do #_(println "WRITE: " (param1))
+          (-> state
+              (update :instruction-pointer + 2)
+              (update :out conj (param1))))
       ;; jump if true
       5 (new-state (if (not (zero? (param1)))
                      (param2)
@@ -113,9 +132,17 @@
 
       (throw (ex-info "invalid opcode" {:op op})))))
 
-(defn run-intcode [intcode input]
-  (->> (iterate step-intcode (new-state 0 intcode input []))
-       (drop-while (complement :halted))
+(defn halted? [{:keys [halted]}]
+  halted)
+
+(defn run-intcode [intcode input & {:keys [keep-running] :or {keep-running (complement halted?)}}]
+  (->> (iterate step-intcode (init-state intcode input))
+       (drop-while keep-running)
+       first))
+
+(defn run-intcode- [state & {:keys [halt?] :or {halt? halted?}}]
+  (->> (iterate step-intcode state)
+       (drop-while (complement halt?))
        first))
 
 (fact "io tests"
