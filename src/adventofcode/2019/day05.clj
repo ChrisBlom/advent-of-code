@@ -63,14 +63,10 @@
 (defn- step-read
   [{:keys [in] :as state} p1]
   (assert (list? in))
-  #_(println "READ:" (peek in) "   inputs:" in )
   (-> state
       (update :instruction-pointer + 2)
       (assoc-in [:buffer p1] (first in))
       (update :in rest)))
-
-(step-read (init-state [1 2 3] [9 8  7 ])
-           0)
 
 (defn step-intcode
   [{:keys [instruction-pointer buffer in out]
@@ -135,15 +131,13 @@
 (defn halted? [{:keys [halted]}]
   halted)
 
-(defn run-intcode [intcode input & {:keys [keep-running] :or {keep-running (complement halted?)}}]
-  (->> (iterate step-intcode (init-state intcode input))
-       (drop-while keep-running)
-       first))
-
 (defn run-intcode- [state & {:keys [halt?] :or {halt? halted?}}]
   (->> (iterate step-intcode state)
        (drop-while (complement halt?))
        first))
+
+(defn run-intcode [intcode input]
+  (run-intcode- (init-state intcode input)))
 
 (fact "io tests"
   (select-keys (run-intcode [ 1101,100,-1,4,0] [1]) [:buffer :out])

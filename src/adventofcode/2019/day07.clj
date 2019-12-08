@@ -1,8 +1,8 @@
 (ns adventofcode.2019.day07
   (:require
-    [adventofcode.2019.day05 :as day5]
-    [clojure.java.io :as io]
-    [midje.sweet :refer :all :except any?]))
+   [adventofcode.2019.day05 :as day5]
+   [clojure.java.io :as io]
+   [midje.sweet :refer :all :except any?]))
 
 (defn parse [x]
   (-> (format "[%s]" x)
@@ -77,40 +77,37 @@
   {:sequence '(1 0 3 4 2), :signal 21760})
 
 (defn step-feedback
-  [intcode
-   {:keys [signal states-by-phase-setting]}
+  [{:keys [signal states-by-phase-setting]}
    phase-setting]
   (let [prev-state (get states-by-phase-setting phase-setting)
-        prev-state- (if prev-state
-                      (assoc prev-state :in (list signal))
-                      (day5/init-state intcode [phase-setting signal]))
-        new-state
-        (day5/run-intcode- prev-state-
-                           :halt? (fn [x]
-                                    (or (day5/halted? x)
-                                        (> (count (:out x))
-                                           (count (:out prev-state))))))
+        inputs (if (:initial prev-state)
+                 (list phase-setting signal)
+                 (list signal))
+        halt? (fn [x]
+                (or (day5/halted? x)
+                    (> (count (:out x))
+                       (count (:out prev-state)))))
+        new-state (day5/run-intcode-  (assoc prev-state :in inputs)
+                                      :halt? halt?)
         new-signal (peek (:out new-state))
-
         new-states (assoc states-by-phase-setting phase-setting new-state)
         all-halted (every? day5/halted? (vals new-states))]
     (if all-halted
-      (reduced (-> new-state :out peek
-                   ))
+      (reduced (-> new-state :out peek))
       {:signal new-signal
        :states-by-phase-setting new-states})))
 
 (defn run-sequence-feedback [intcode sequence]
   (let [initial-signal 0
         initial-states
-        (for [phase-setting sequence]
-          [phase-setting (assoc (day5/init-state intcode [phase-setting initial-signal])
-                                :initial true)])]
-
-    (reduce (partial step-feedback intcode)
+        (into {}
+              (for [phase-setting sequence]
+                [phase-setting (assoc (day5/init-state intcode [phase-setting initial-signal])
+                                      :initial true)]))]
+    (reduce step-feedback
             {:signal 0
-             :states-by-phase-setting {}}
-     (cycle sequence))))
+             :states-by-phase-setting initial-states}
+            (cycle sequence))))
 
 (fact "part 2 examples"
   (let [intcode [3 26 1001 26 -4 26 3 27 1002 27 2 27 1 27 26 27 4 27 1001 28 -1 28 1005 28 6 99 0 0 5]]
@@ -139,7 +136,7 @@
 
 (fact "part 2"
   (find-max-output-p2
-        input-intcode
-        phase-settings-p2)
+   input-intcode
+   phase-settings-p2)
   =>
   {:sequence '(8 9 5 6 7), :signal 69816958})
