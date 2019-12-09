@@ -14,10 +14,9 @@
        parse))
 
 (defn parse-parameter-mode [p]
-  (let []
-    {:ma (quot p 100)
-     :mb (quot (mod p 100) 10)
-     :mc (rem  (mod p 100) 10)}))
+  {:ma (quot p 100)
+   :mb (quot (rem p 100) 10)
+   :mc (rem  (rem p 100) 10)})
 
 (fact
   (parse-parameter-mode 987)
@@ -36,29 +35,36 @@
 (fact
   (parse-opcode 1002)
   =>
-  {:ma 0, :mb 1, :mc 0, :op 2})
+  {:ma 0, :mb 1, :mc 0, :op 2}
 
-(defn memload [buffer parameter mode]
+)
+
+(defn memload [buffer parameter mode relative-base]
   (case mode
     ;; position mode
     0 (do
         (assert (contains? buffer parameter))
         (get buffer parameter))
     ;; immediate mode
-    1  parameter))
+    1  parameter
+    ;; relative mode
+     (do
+        (assert (contains? buffer parameter))
+        (get buffer (+ parameter )))
+    ))
 
 
-(defn new-state [instruction-pointer buffer in out]
+(defn new-state [instruction-pointer relative-base buffer in out]
   {:instruction-pointer instruction-pointer
+   :relative-base relative-base
    :buffer buffer
    :in in
    :out out})
 
-
 (defn init-state
   [intcode input]
   {:pre [(sequential? input)]}
-  (new-state 0 intcode (apply list input) []))
+  (new-state 0 0 intcode (apply list input) []))
 
 (defn- step-read
   [{:keys [in] :as state} p1]
@@ -69,25 +75,27 @@
       (update :in rest)))
 
 (defn step-intcode
-  [{:keys [instruction-pointer buffer in out]
+  [{:keys [instruction-pointer relative-base buffer in out]
     :as state}]
   {:pre [(contains? buffer instruction-pointer)
          (list? in)
          (vector? out)]}
   (let [[opcode p1 p2 p3 :as instr] (subvec buffer instruction-pointer)
         {:keys [op ma mb mc]} (parse-opcode opcode)
-        param1 (fn [] (memload buffer p1 mc))
-        param2 (fn [] (memload buffer p2 mb))
+        param1 (fn [] (memload buffer p1 mc relative-base))
+        param2 (fn [] (memload buffer p2 mb relative-base))
         memset (fn [address value]
                  (assoc buffer address value))]
     (case op
       ;; +
       1 (new-state (+ 4 instruction-pointer)
+                   relative-base
                    (memset p3 (+ (param1) (param2)))
                    in
                    out)
       ;; *
       2 (new-state (+ 4 instruction-pointer)
+                   relative-base
                    (memset p3 (* (param1) (param2)))
                    in
                    out)
@@ -96,30 +104,29 @@
             (step-read state p1))
       ;; write
       4 (do #_(println "WRITE: " (param1))
-          (-> state
-              (update :instruction-pointer + 2)
-              (update :out conj (param1))))
+            (-> state
+                (update :instruction-pointer + 2)
+                (update :out conj (param1))))
       ;; jump if true
-      5 (new-state (if (not (zero? (param1)))
-                     (param2)
-                     (+ 3 instruction-pointer))
-                   buffer
-                   in
-                   out)
+      5 (assoc state :instruction-pointer
+               (if (not (zero? (param1)))
+                 (param2)
+                 (+ 3 instruction-pointer)))
+
       ;; jump if false
-      6 (new-state (if (zero? (param1))
-                     (param2)
-                     (+ 3 instruction-pointer))
-                   buffer
-                   in
-                   out)
+      6 (assoc state :instruction-pointer
+               (if (zero? (param1))
+                 (param2)
+                 (+ 3 instruction-pointer)))
       ;; less than
       7 (new-state (+ 4 instruction-pointer)
+                   relative-base
                    (memset p3 (if (< (param1) (param2)) 1 0))
                    in
                    out)
       ;; equals
       8 (new-state (+ 4 instruction-pointer)
+                   relative-base
                    (memset p3 (if (= (param1) (param2)) 1 0))
                    in
                    out)
