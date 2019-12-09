@@ -1,6 +1,6 @@
 (ns adventofcode.2019.day07
   (:require
-   [adventofcode.2019.day05 :as day5]
+   [adventofcode.2019.intcode :as intcode]
    [clojure.java.io :as io]
    [midje.sweet :refer :all :except any?]))
 
@@ -21,7 +21,7 @@
   [intcode phase-setting input-signal]
   {:pre (phase-setting? phase-setting)}
   (->> [phase-setting input-signal]
-       (day5/run-intcode intcode)
+       (intcode/run-intcode intcode)
        :out
        peek))
 
@@ -84,14 +84,14 @@
                  (list phase-setting signal)
                  (list signal))
         halt? (fn [x]
-                (or (day5/halted? x)
+                (or (intcode/halted? x)
                     (> (count (:out x))
                        (count (:out prev-state)))))
-        new-state (day5/run-intcode-  (assoc prev-state :in inputs)
+        new-state (intcode/run-intcode-  (assoc prev-state :in inputs)
                                       :halt? halt?)
         new-signal (peek (:out new-state))
         new-states (assoc states-by-phase-setting phase-setting new-state)
-        all-halted (every? day5/halted? (vals new-states))]
+        all-halted (every? intcode/halted? (vals new-states))]
     (if all-halted
       (reduced (-> new-state :out peek))
       {:signal new-signal
