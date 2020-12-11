@@ -63,27 +63,31 @@
     (mapv buffer (range 0 (inc high)))))
 
 (defn init-state
-  [intcode input]
-  {:pre [(sequential? input)]}
-  (let [buffer (apply sorted-map (mapcat list (range) intcode))
-        in (apply list input)]
-    (new-state 0 0 buffer in [])))
+  ([intcode]
+   (init-state intcode (list)))
+  ([intcode input]
+   {:pre [(sequential? input)]}
+   (let [buffer (apply hash-map (mapcat list (range) intcode))
+         in (apply list input)]
+     (new-state 0 0 buffer in []))))
 
 (defn- step-read
   [{:keys [in relative-base] :as state} p1 ma]
-  (assert (list? in))
+  (assert (seq? in))
   (-> state
       (update :instruction-pointer + 2)
       (update :buffer memstore p1 ma relative-base (first in))
       (update :in rest)))
 
 (defn step-intcode
-  [{:keys [instruction-pointer relative-base buffer in out]
+  [{:keys [instruction-pointer relative-base buffer in out await-input]
     :as state}]
   {:pre [(contains? buffer instruction-pointer)
-         (list? in)
+         (seq? in)
          (vector? out)]}
-  (let [[opcode p1 p2 p3 :as instr] (map buffer (iterate inc instruction-pointer))
+  (let [state (cond-> state
+                (seq in) (dissoc :await-input))
+        [opcode p1 p2 p3 :as instr] (map buffer (iterate inc instruction-pointer))
         {:keys [op ma mb mc]} (parse-opcode opcode)
         param1 (fn [] (memload buffer p1 mc relative-base))
         param2 (fn [] (memload buffer p2 mb relative-base))
@@ -103,9 +107,12 @@
                    in
                    out)
       ;; read
-      3 (do (assert (seq in) "Cannot read from empty input")
-            (step-read state p1 mc))
-      ;; write
+      3 #_(do (assert (seq in) "Cannot read from empty input")
+              (step-read state p1 mc))
+      (if (empty? in)
+        (assoc state :await-input true)
+        (dissoc (step-read state p1 mc) :await-input))
+      ;; writ
       4 (-> state
             (update :instruction-pointer + 2)
             (update :out conj (param1)))
@@ -143,10 +150,24 @@
 (defn halted? [{:keys [halted]}]
   halted)
 
+(defn has-output? [{:keys [out]}]
+  (seq out))
+
 (defn run-intcode- [state & {:keys [halt?] :or {halt? halted?}}]
   (->> (iterate step-intcode state)
        (drop-while (complement halt?))
        first))
+
+(defn run-intcode-io [state & input]
+  (let [{:keys [out halted] :as new-state}
+        (->> (iterate step-intcode (assoc state :in (apply list input) :out []))
+             (drop-while (complement
+                          (some-fn halted?
+                                   has-output?)
+                          ))
+             first)]
+    new-state
+    ))
 
 (defn run-intcode [intcode input]
   (run-intcode- (init-state intcode input)))
