@@ -32,12 +32,12 @@ F11")
 
 (defn turn [heading action value]
   (let [turns (/ value 90)]
-    (let [rot-fn (apply comp (repeat turns (partial rotate action)))]
-      (rot-fn heading))))
+    (-> (iterate (partial rotate action) heading)
+        (nth turns))))
 
 (assert
  (=
-  (map #(turn (directions \N) \R %) (map (partial * 90) (range 0 4)))
+  (map #(turn (directions \N) \R %) (range 0 360 90))
   (map directions "NESW")))
 
 (assert (= (directions \E) (rotate \R (directions \N))))
@@ -78,14 +78,15 @@ F11")
 
 (let [start-pos [0 0]]
   {:part-1
+   (time
+       (->> (parse input)
+            (reduce move {:heading (directions \E) :pos start-pos})
+            :pos
+            (manhattan-distance start-pos)))
 
-   (manhattan-distance start-pos (->> (parse input)
-                                      (reduce move
-                                              {:heading (directions \E) :pos start-pos :waypoint-pos []})
-                                      :pos))
    :part-2
-   (->> (reduce move-2
-                {:waypoint-pos [10 1] :ship-pos start-pos}
-                (parse input))
-        :ship-pos
-        (manhattan-distance start-pos))})
+   (time
+       (->> (parse input)
+            (reduce move-2 {:waypoint-pos [10 1] :ship-pos start-pos})
+            :ship-pos
+            (manhattan-distance start-pos)))})
