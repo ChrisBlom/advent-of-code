@@ -59,6 +59,11 @@ start-RW")
 (defn small? [^String cave]
   (every? #(Character/isLowerCase ^char %) cave))
 
+(defn start-or-end? [cave]
+  (case cave
+    ("start" "end") true
+    false))
+
 (defn next-states-1 [transitions {:keys [pos visited]}]
   (for [target (transitions pos)
         :when (if (small? target)
@@ -74,7 +79,7 @@ start-RW")
               use-small-cave-twice (and is-small
                                         (= visits 1)
                                         (not small-cave-twice)
-                                        (not (#{"start" "end"} target)))]
+                                        (not (start-or-end? target)))]
         :when (if is-small
                 (< (visited target 0) (if use-small-cave-twice 2 1))
                 true)]
@@ -82,14 +87,17 @@ start-RW")
      :visited (if is-small (update visited target (fnil + 0) 1) visited)
      :small-cave-twice (if use-small-cave-twice target small-cave-twice)}))
 
-(next-states-2 {"a" ["b" "c"]}
-               {:pos "a" :visited {"b" 1} :path [] :small-cave-twice nil})
-
-(next-states-2 {"a" ["b" "c"]}
-               {:pos "a" :visited {"b" 1} :path [] :small-cave-twice "b"})
-
-(next-states-2 {"a" ["b" "c" "start"]}
-             {:pos "a" :visited {"b" 1 "start" 1} :path []})
+(assert (=  (next-states-2 {"a" ["b" "c"]}
+                           {:pos "a" :visited {"b" 1} :path [] :small-cave-twice nil})
+            '({:pos "b", :visited {"b" 2}, :small-cave-twice "b"}
+              {:pos "c", :visited {"b" 1, "c" 1}, :small-cave-twice nil})))
+(assert (=  (next-states-2 {"a" ["b" "c"]}
+                           {:pos "a" :visited {"b" 1} :path [] :small-cave-twice "b"})
+            '({:pos "c", :visited {"b" 1, "c" 1}, :small-cave-twice "b"})))
+(assert (=  (next-states-2 {"a" ["b" "c" "start"]}
+                           {:pos "a" :visited {"b" 1 "start" 1} :path []})
+            '({:pos "b", :visited {"b" 2, "start" 1}, :small-cave-twice "b"}
+              {:pos "c", :visited {"b" 1, "start" 1, "c" 1}, :small-cave-twice nil})))
 
 (defn paths [transitions next-states]
   (loop [ [state & todo] [{:pos  "start" :visited {"start" 1}}]
