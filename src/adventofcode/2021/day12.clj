@@ -46,16 +46,6 @@ zg-he
 pj-fs
 start-RW")
 
-(defn transitions [input]
-  (->> input
-       str/split-lines
-       (reduce (fn [acc line]
-                 (let [ [from to] (str/split line #"-")]
-                   (-> acc
-                       (update from (fnil conj #{}) to)
-                       (update to (fnil conj #{}) from))))
-               {})))
-
 (defn small? [^String cave]
   (every? #(Character/isLowerCase ^char %) cave))
 
@@ -64,45 +54,58 @@ start-RW")
     ("start" "end") true
     false))
 
-(defn next-states-1 [transitions {:keys [pos visited]}]
-  (for [target (transitions pos)
-        :when (if (small? target)
-                (< (visited target 0) 1)
-                true)]
-    {:pos target
-     :visited (update visited target (fnil + 0) 1)}))
+(defn make-target [x]
+  {:cave x
+   :is-small (small? x)
+   :is-start-or-end (start-or-end? x)})
 
-(defn next-states-2 [transitions {:keys [pos visited small-cave-twice] :as state}]
-  (for [target (transitions pos)
-        :let [visits (visited target 0)
-              is-small (small? target)
+(defn transitions [input]
+  (->> input
+       str/split-lines
+       (reduce (fn [acc line]
+                 (let [ [from to] (str/split line #"-")]
+                   (-> acc
+                       (update from (fnil conj #{}) (make-target to))
+                       (update to (fnil conj #{}) (make-target from)))))
+               {})))
+
+(defn next-states-1 [transitions {:keys [pos visited]}]
+  (for [{:keys [cave is-small] :as target} (transitions pos)
+        :when (if is-small
+                (< (visited cave 0) 1)
+                true)]
+    {:pos (:cave target)
+     :visited (update visited cave (fnil + 0) 1)}))
+
+(defn next-states-2 [transitions {:keys [pos visited used-small-cave-twice]}]
+  (for [{:keys [cave is-small] :as target} (transitions pos)
+        :let [visits (visited cave 0)
               use-small-cave-twice (and is-small
                                         (= visits 1)
-                                        (not small-cave-twice)
-                                        (not (start-or-end? target)))]
+                                        (not used-small-cave-twice)
+                                        (not (:is-start-or-end target)))]
         :when (if is-small
-                (< (visited target 0) (if use-small-cave-twice 2 1))
+                (< visits (if use-small-cave-twice 2 1))
                 true)]
-    {:pos target
-     :visited (if is-small (update visited target (fnil + 0) 1) visited)
-     :small-cave-twice (if use-small-cave-twice target small-cave-twice)}))
+    {:pos cave
+     :visited (if is-small (assoc visited cave (inc visits)) visited)
+     :used-small-cave-twice (if use-small-cave-twice cave used-small-cave-twice)}))
 
-(assert (=  (next-states-2 {"a" ["b" "c"]}
-                           {:pos "a" :visited {"b" 1} :path [] :small-cave-twice nil})
-            '({:pos "b", :visited {"b" 2}, :small-cave-twice "b"}
-              {:pos "c", :visited {"b" 1, "c" 1}, :small-cave-twice nil})))
-(assert (=  (next-states-2 {"a" ["b" "c"]}
-                           {:pos "a" :visited {"b" 1} :path [] :small-cave-twice "b"})
-            '({:pos "c", :visited {"b" 1, "c" 1}, :small-cave-twice "b"})))
-(assert (=  (next-states-2 {"a" ["b" "c" "start"]}
+(assert (=  (next-states-2 {"a" (map make-target ["b" "c"])}
+                           {:pos "a" :visited {"b" 1} :path []})
+            '({:pos "b", :visited {"b" 2}, :used-small-cave-twice "b"}
+              {:pos "c", :visited {"b" 1, "c" 1}, :used-small-cave-twice nil})))
+(assert (=  (next-states-2 {"a" (map make-target ["b" "c"])}
+                           {:pos "a" :visited {"b" 1} :path [] :used-small-cave-twice "b"})
+            '({:pos "c", :visited {"b" 1, "c" 1}, :used-small-cave-twice "b"})))
+(assert (=  (next-states-2 {"a" (map make-target ["b" "c" "start"])}
                            {:pos "a" :visited {"b" 1 "start" 1} :path []})
-            '({:pos "b", :visited {"b" 2, "start" 1}, :small-cave-twice "b"}
-              {:pos "c", :visited {"b" 1, "start" 1, "c" 1}, :small-cave-twice nil})))
+            '({:pos "b", :visited {"b" 2, "start" 1}, :used-small-cave-twice "b"}
+              {:pos "c", :visited {"b" 1, "start" 1, "c" 1}, :used-small-cave-twice nil})))
 
 (defn paths [transitions next-states]
   (loop [ [state & todo] [{:pos  "start" :visited {"start" 1}}]
          completed-paths 0]
-;    (println (:pos state) (count todo) (count completed-paths))
     (cond
       (nil? state)
       completed-paths
