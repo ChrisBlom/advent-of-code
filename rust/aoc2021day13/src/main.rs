@@ -5,26 +5,23 @@ use std::{
 };
 
 fn parse_fold(str: String) -> (String, i32) {
-    let a = &str[("fold along ".len())..];
-    let mut x = a.split("=");
+    let parts = &mut str[("fold along ".len())..].split("=");
     return (
-        x.next().unwrap().to_string(),
-        x.next().unwrap().parse::<i32>().unwrap(),
+        parts.next().unwrap().to_string(),
+        parts.next().unwrap().parse::<i32>().unwrap(),
     );
+}
+
+fn parse_coord(line: String) -> (i32, i32) {
+    let mut parts = line.split(",").map(|c| c.parse::<i32>().unwrap());
+    return (parts.next().unwrap(), parts.next().unwrap());
 }
 
 fn main() {
     let mut coords = BufReader::new(File::open("input.txt").unwrap())
         .lines()
         .take_while(|l| -> bool { !l.as_ref().unwrap().is_empty() })
-        .map(|l| -> (i32, i32) {
-            let l = l
-                .unwrap()
-                .split(",")
-                .map(|c| c.parse::<i32>().unwrap())
-                .collect::<Vec<i32>>();
-            return (l[0], l[1]);
-        })
+        .map(|l| parse_coord(l.unwrap()))
         .collect::<HashSet<(i32, i32)>>();
 
     let folds: Vec<(String, i32)> = BufReader::new(File::open("input.txt").unwrap())
