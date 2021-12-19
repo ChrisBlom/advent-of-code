@@ -153,4 +153,10 @@ f => [[[[0,7],4],[[7,8],[6,0]]],[8,1]]))
 
 (def input  (read-string (format "[%s]" (slurp (io/resource "2021/day18.txt")))))
 
-{:part-1 (magnitude (final-sum input))}
+{:part-1 (magnitude (final-sum input))
+ :part-2 (apply max
+                (for [i (range 0 (count input))
+                      j (range 0 (count input))
+                      :when (not= i j)]
+                  (magnitude (fish-add (input i)
+                                       (input j)))))}
