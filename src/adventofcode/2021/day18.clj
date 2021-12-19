@@ -23,27 +23,31 @@
   [loc]
   (find-loc loc #(and (vector? (z/node %)) (>= (z-depth %) 4))))
 
-(defn edit-left-number [loc f x]
-  (assert (number? x))
+(fact
+  (z/node (locate-explode-pair (z/vector-zip [[6,[5,[4,[3,2]]]],1]))) => [3 2]
+  (z/node (locate-explode-pair (z/vector-zip [[6,[5,[4,[3,2]]]],[ 1 [ 2 [3 [4 [5 [6 7] ]]]]]]))) => [3 2])
+
+(defn edit-left-number
+  "replace number left of loc with result of (f node arg) and move back to loc"
+  [loc f arg]
+  (assert (number? arg))
   (if-let [l (z/prev loc)]
     (z/next (if (number? (z/node l))
-              (z/edit l f x)
-              (edit-left-number l f x)))
+              (z/edit l f arg)
+              (edit-left-number l f arg)))
     loc))
 
-(defn edit-right-number [loc f x]
-  (assert (number? x))
+(defn edit-right-number
+  "replace number right of loc with result of (f node arg) and move back to loc"
+  [loc f arg]
+  (assert (number? arg))
   (if-let [r (z/next loc)]
     (if (z/end? r)
       loc
       (z/prev (if (number? (z/node r))
-                (z/edit r f x)
-                (edit-right-number r f x))))
+                (z/edit r f arg)
+                (edit-right-number r f arg))))
     loc))
-
-(fact
-  (z/node (locate-explode-pair (z/vector-zip [[6,[5,[4,[3,2]]]],1]))) => [3 2]
-  (z/node (locate-explode-pair (z/vector-zip [[6,[5,[4,[3,2]]]],[ 1 [ 2 [3 [4 [5 [6 >] ]]]]]]))) => [3 2])
 
 (defn explode [x]
   (when-let [loc-to-explode (locate-explode-pair (z/vector-zip x))]
@@ -91,7 +95,6 @@ d => [[[[0,7],4],[[7,8],[0,13]]],[1,1]]
 e => [[[[0,7],4],[[7,8],[0,[6,7]]]],[1,1]]
 f => [[[[0,7],4],[[7,8],[6,0]]],[8,1]]))
 
-
 (defn magnitude [x]
   (if (number? x)
     x
@@ -109,8 +112,7 @@ f => [[[[0,7],4],[[7,8],[6,0]]],[8,1]]))
     (if (= x n)
       n
       (snailfish-reduce x))
-    n)
-)
+    n))
 
 (fact
   (snailfish-reduce [[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]])
@@ -154,9 +156,9 @@ f => [[[[0,7],4],[[7,8],[6,0]]],[8,1]]))
 (def input  (read-string (format "[%s]" (slurp (io/resource "2021/day18.txt")))))
 
 {:part-1 (magnitude (final-sum input))
- :part-2 (apply max
-                (for [i (range 0 (count input))
-                      j (range 0 (count input))
-                      :when (not= i j)]
-                  (magnitude (fish-add (input i)
-                                       (input j)))))}
+ :part-2 (time (reduce max
+                      (for [i (range 0 (count input))
+                            j (range 0 (count input))
+                            :when (not= i j)]
+                        (magnitude (fish-add (input i)
+                                             (input j))))))}
