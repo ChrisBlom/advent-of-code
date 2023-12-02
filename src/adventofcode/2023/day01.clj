@@ -1,24 +1,7 @@
-(ns adventofcode.2023.day01
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io]))
 
-
-(def example
-  "1abc2
-pqr3stu8vwx
-a1b2c3d4e5f
-treb7uchet
-")
-
-(def example-2
-  "two1nine
-eightwothree
-abcone2threexyz
-xtwone3four
-4nineeightseven2
-zoneight234
-7pqrstsixtee")
-
+(require
+ '[clojure.string :as str]
+ '[clojure.java.io :as io])
 
 (def spelled-digits
   {"one" 1
@@ -41,25 +24,15 @@ zoneight234
   (map #(get spelled-digits % %) (re-seq digit-or-spelled-digit line)))
 
 
-(defn extract-numbers [input extract-digits]
+(defn sum-first-last-digits [input extract-digits]
   (transduce
-   (comp
-    (map (fn [line]
-           (let [digits (extract-digits line)]
-             (str (first digits) (last digits)))))
-    (map read-string))
-   +
-   0
-   (str/split-lines input)
-   ))
+   (map (fn [line]
+          (let [digits (extract-digits line)]
+            (read-string (str (first digits) (last digits))))))
+   + 0
+   (str/split-lines input)))
 
 
-(defn part-1 [input] (extract-numbers input extract-digits))
-(defn part-2 [input] (extract-numbers input extract-digits-or-spelled-number))
-
-(def input (slurp (io/resource "2023/day01.txt")))
-
-
-
-{:part-1 (part-1 input)
- :part-2 (part-2 input)}
+(let [input (slurp "day01.txt")]
+  {:part-1 (sum-first-last-digits input extract-digits)
+   :part-2 (sum-first-last-digits input extract-digits-or-spelled-number)})
