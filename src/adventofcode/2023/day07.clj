@@ -26,8 +26,6 @@ QQQJA 483
     \T 10
     (parse-long (str card))))
 
-(parse example)
-
 (defn hand-strength [hand]
   (let [f (frequencies hand)
         ff (frequencies (vals f))]
@@ -40,23 +38,14 @@ QQQJA 483
       (= (ff 2) 1) 1
       :else 0)))
 
-(hand-strength "33332" )
-(hand-strength "2AAAA" )
-(hand-strength "77888" )
-
 (defn hand-rank [hand]
   (vec (cons (hand-strength hand) (map card-score hand))))
-
-(assert (= (hand-rank "55555") [6 5 5 5 5 5]))
-(assert (= (hand-rank "33222") [4 3 3 2 2 2]))
 
 (defn part-1 [input]
   (->> (map #(* (:bid %1) %2)
             (sort-by (comp hand-rank :hand) (parse input))
             (map inc (range )))
        (reduce + 0)))
-
-(part-1 example)
 
 (defn card-score-2 [card]
   (case card
