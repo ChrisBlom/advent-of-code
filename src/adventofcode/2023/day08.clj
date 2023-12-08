@@ -14,6 +14,8 @@ EEE = (EEE, EEE)
 GGG = (GGG, GGG)
 ZZZ = (ZZZ, ZZZ)")
 
+(def input   (slurp (io/resource "2023/day08.txt")))
+
 (defn parse-node [s]
   (let [[_ from l r] (re-matches #"(.+) = \((.+), (.+)\)" s)]
     [from
@@ -36,19 +38,17 @@ ZZZ = (ZZZ, ZZZ)")
 
 (parse example)
 
-
+(defn steps-to-end [{:keys [nodes dirs]} start end-node?]
+  (reduce (fn [ [steps node] lr]
+            (if (end-node? node)
+              (reduced steps)
+              [(inc steps)
+               (get-in nodes [node lr])]))
+          [0 start]
+          (apply concat (repeat dirs))))
 
 (defn part-1 [input]
-  (let [{:keys [dirs nodes]} (parse input)]
-    (reduce (fn [ [i node] lr]
-              (if (= node "ZZZ")
-                (reduced i)
-                [(inc i)
-                 (get-in nodes [node lr])]))
-            [0
-             "AAA"]
-     (apply concat (repeat dirs)))))
-
+  (steps-to-end (parse input) "AAA" #{"ZZZ"}))
 
 (defn start-node? [s]
   (str/ends-with? s "A"))
@@ -56,33 +56,7 @@ ZZZ = (ZZZ, ZZZ)")
 (defn end-node? [s]
   (str/ends-with? s "Z"))
 
-
-(defn step-2 [nodes]
-  (fn [ [i state-nodes] lr]
-    (when (mod i  10000) (println i))
-    (if (every? end-node? state-nodes)
-      (reduced i)
-      [(inc i)
-       (into #{}
-             (map #(get-in nodes [% lr]))
-             state-nodes)])))
-
-;; naive solution, too slow
-(defn part-2 [input]
-  (let [{:keys [dirs nodes]} (parse input)
-        repeated-dirs (apply concat (repeat dirs))]
-    (reduce (step-2 nodes)
-            [0
-             (filter start-node? (keys nodes)) ]
-            repeated-dirs)))
-
-
-(parse-node "11A = (11B, 1XXX)")
-
-(keys (:nodes (parse ex2 )))
-
-
-(def ex2
+(def example-2
   "LR
 
 11A = (11B, XXX)
@@ -95,11 +69,44 @@ ZZZ = (ZZZ, ZZZ)")
 XXX = (XXX, XXX)
 ")
 
-(part-1 example)
+(defn step-2 [nodes]
+  (fn [ [i state-nodes] lr]
+    (when (mod i  10000) (println i))
+    (if (every? end-node? state-nodes)
+      (reduced i)
+      [(inc i)
+       (into #{}
+             (map #(get-in nodes [% lr]))
+             state-nodes)])))
 
-(part-2  ex2)
+;; naive solution, too slow
+(defn part-2-naive [input]
+  (let [{:keys [dirs nodes]} (parse input)
+        repeated-dirs (apply concat (repeat dirs))]
+    (reduce (step-2 nodes)
+            [0
+             (filter start-node? (keys nodes)) ]
+            repeated-dirs)))
 
-(def input   (slurp (io/resource "2023/day08.txt")))
+(defn gcd [a b]
+  (if (zero? b)
+    a
+    (gcd b (mod a b))))
+
+(defn lcm [a b]
+  (* (abs b) (/ (abs a)
+                (gcd a b))))
+
+(defn part-2-fast [input]
+  (let [{:keys [dirs nodes] :as parsed} (parse input)
+        start-nodes (filter start-node? (keys nodes))]
+    (->> start-nodes
+         (map (fn [start] (steps-to-end parsed start end-node?)))
+         (reduce lcm))))
+
+{:part-1 (part-1 input)
+ :part-2 (part-2-fast input)}
+
 
 (defn export-graph [input]
   (let [ {:keys [nodes]}  (parse input)]
