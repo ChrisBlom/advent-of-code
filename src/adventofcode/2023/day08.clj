@@ -1,4 +1,4 @@
-(ns adventofcode.2023.day07
+(ns adventofcode.2023.day08
   (:require [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.java.shell :as sh]))
