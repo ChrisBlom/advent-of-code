@@ -8,5 +8,8 @@
                  [net.mikera/imagez "0.12.0"]
                  [clojure2d "1.4.3"]
                  [midje "1.9.0"]
-                 [djblue/portal "0.50.0"]]
+                 [djblue/portal "0.50.0"]
+                 [org.clojure/data.priority-map "1.1.0"]
+                 [automat "0.2.4"]
+                 ]
   :plugins [[lein-midje "3.1.3"]])
