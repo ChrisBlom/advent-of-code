@@ -11,11 +11,8 @@
        (apply concat)
        (into (sorted-map))))
 
-(defn pp [input]
-  (run! #(println (apply str (map render % )))
-        (clojure.string/split-lines input)))
 
-(pp example)
+
 
 (def render
   {\F  \┏
@@ -26,6 +23,13 @@
    \-  \━
    \S  \S
    \.  \.})
+
+
+(defn pp [input]
+  (run! #(println (apply str (map render % )))
+        (clojure.string/split-lines input)))
+
+(pp example)
 
 (def exits
   {\F #{:d :r}
