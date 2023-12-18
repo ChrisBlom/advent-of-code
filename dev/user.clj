@@ -14,12 +14,15 @@
 
 (defn day-input []
   (let [ [_ year day](str/split (str *ns*) #"\.")
-        f (io/file (str "resources/"  (format "%s/%s.txt" year day)))]
+        path (format "%s/%s.txt" year day)
+        f (io/resource path )]
 
     (if (.exists f)
-      (slurp f)
+      (let [s (slurp f)]
+        (if (str/blank? s)
+          (throw (ex-info "blank file" {:f path}))
+          s)
+        )
       (do
         (.createNewFile f)
-        (throw (ex-info "no-such-file" {:f f}))
-        )
-      )))
+        (throw (ex-info "no-such-file" {:f path}))))))
