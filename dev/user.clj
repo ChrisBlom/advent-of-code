@@ -14,8 +14,8 @@
 
 (defn day-input []
   (let [ [_ year day](str/split (str *ns*) #"\.")
-        path (format "%s/%s.txt" year day)
-        f (io/resource path )]
+        path (format "resources/%s/%s.txt" year day)
+        f (io/file path )]
 
     (if (.exists f)
       (let [s (slurp f)]

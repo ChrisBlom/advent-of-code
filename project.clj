@@ -11,5 +11,6 @@
                  [djblue/portal "0.50.0"]
                  [org.clojure/data.priority-map "1.1.0"]
                  [automat "0.2.4"]
+                 [net.clojars.jordibc/geometric-algebra "0.9.2"]
                  ]
   :plugins [[lein-midje "3.1.3"]])
