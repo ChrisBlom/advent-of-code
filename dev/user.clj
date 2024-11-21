@@ -26,3 +26,21 @@
       (do
         (.createNewFile f)
         (throw (ex-info "no-such-file" {:f path}))))))
+
+(defn show-dot
+  ([s] (show-dot s :neato))
+  ([s cmd ]
+   (spit "out.dot" s)
+   (let [{:keys [err out exit]}  (clojure.java.shell/sh (name cmd) "-Tsvg" "-O" "out.dot")]
+     (assert (zero? exit) err))
+   (clojure.java.browse/browse-url (str "file://" (.getAbsolutePath (clojure.java.io/file "out.dot.svg"))))))
+
+
+
+(defmacro graphviz [& args]
+  (let [ [cmd body] (if (keyword (first args))
+                      [ (first args) (rest args)]
+                      [ :neato args])]
+    `(show-dot
+      (with-out-str
+        ~@body))))
