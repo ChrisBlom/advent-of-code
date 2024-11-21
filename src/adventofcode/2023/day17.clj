@@ -28,195 +28,174 @@
 (def right [0 1])
 (def left [0 -1])
 
-(def opposite
-  {left right right left up down down up})
-
-(def desc
-  {up :up
-   down :down
-   left :left
-   right :right})
-
 (def horizontal #{left right})
 (def vertical #{up down})
+(def all-dirs (sorted-set up right down left))
 
 (defn move [pos dir] (mapv + pos dir))
 
-(defn scale [ v s]
-  [(* s (v 0))
-   (* s (v 1))])
-
-(def all-dirs (sorted-set up right down left))
-
-(def allowed-dirs
+(def turn-dirs
   {left vertical
    right vertical
    down horizontal
    up horizontal
    nil all-dirs})
 
-(defn next-states [g {:keys [pos prev-dir total-loss] :as s}]
-  (apply concat
-         (for [d (allowed-dirs prev-dir)]
-           (->> (iterate (fn [{:keys [pos total-loss path ] :as s}]
-                           (let [npos (move pos d)
-                                 loss (get-in g npos)]
-                             (when loss
-                               (assoc s
-                                      :pos npos
-                                      :path (conj path npos)
-                                      :total-loss (+ total-loss loss)))))
-                         (assoc s :prev-dir d))
-                (take-while some?)
-                (drop 1)
-                (take 3)))))
+(defn allowed-dirs1 [prev-dir steps-in-prev-dir]
+  (cond-> (turn-dirs prev-dir)
+    (and prev-dir (< steps-in-prev-dir 3)) (conj prev-dir)))
 
-(let [g [[1 2 3 4]
-         [5 6 7 8]]]
-  (next-states g
-               {:pos [0 2]
-                :prev-dir right
-                :total-loss (+ 1 2 3)}))
+(defn allowed-dirs2 [prev-dir steps-in-prev-dir]
+  (cond
+    (not prev-dir)
+    all-dirs ;; only on initial step
+    (< steps-in-prev-dir 4)
+    #{prev-dir}
+    (< steps-in-prev-dir 10)
+    (conj (turn-dirs prev-dir) prev-dir)
 
-(let [g [[1 2 3 4]
-         [5 6 7 8]]]
-  (next-states g
-               {:pos [1 3]
-                :prev-dir right
-                :total-loss (+ 1 2 3)
-                :steps-in-same-dir 3
-                }))
+    :else
+    (turn-dirs prev-dir)))
 
-
-(let [g [[1 2 3 4]
-         [5 6 7 8]]]
-  (next-states g
-               {:pos [1 3]
-                :prev-dir right
-                :total-loss (+ 1 2 3)
-                :steps-in-same-dir 3
-                }))
-
-
-(defn coords [g]
-  (for [y (range 0 (count g))
-        x (range 0 (count (get g y)))]
-    [y x]))
-
-
-
-
-
-(sort-by identity by-min-los [{:total-loss 1} {:total-loss 2} {:total-loss 0}])
-
-(defn dist [a b]
-  (reduce + (map (comp abs -)  a b)))
+(allowed-dirs1 nil 1)
+(allowed-dirs1 up 1)
+(allowed-dirs1 up 2)
+(allowed-dirs1 up 3)
 
 (defn target-pos [g]
   [(dec (count g))
    (dec (count (g 0)))])
 
-(defn min-heat-loss [g]
-  (let [target (target-pos g)
-        init {:pos [0 0]
-              :prev-dir nil
-              :total-loss (get-in g [0 0])
-              :path [ [0 0] ]}]
-    (loop [todo (pm/priority-map-keyfn :total-loss (gensym) init)
-           best-so-far {}]
-      (if-some [ [k state] (first todo)]
-        (if (= target (:pos state))
-          (best-so-far target)
-          (cond (> (:total-loss state)
-                   (get-in best-so-far [(:pos state) :total-loss] Long/MAX_VALUE))
-                (recur (dissoc todo k)
-                       best-so-far)
 
-                :else
-                (let [succ (next-states g state)
-                      improvements (filter #(<= (:total-loss %)
-                                                (get-in best-so-far [(:pos %) :total-loss] Integer/MAX_VALUE))
-                                           succ)
-                      best-so-far-updated (reduce (fn [acc {:keys [pos total-loss path]}]
-                                                    (assoc acc pos {:total-loss total-loss :path path}))
-                                                  best-so-far
-                                                  improvements)]
-                  (recur (merge (dissoc todo k)
-                                (zipmap (repeatedly (count improvements) gensym) improvements))
-                         best-so-far-updated))))
-        best-so-far))))
-
-(defn br [g]
-  [(dec (count g))
-   (dec (count (first g)))])
-
-(let [g  (parse ex)]
-  (pp g
-      (:path (min-heat-loss g))      ))
-
-
+(def i (atom 0))
 
 (defn pp [g path]
   (let [in-path? (set path)]
     (doseq [y (range (count g))]
       (->> (for [x (range (count (get g y)))]
              (if (in-path? [y x])
-               \_
+               \~
                (get-in g [y x])))
            (apply str)
            println))))
 
-
-(let [g (parse ex)]
-  (pp g
-      (:path (:))
-      ))
-
-(let [g  (parse "111
-991")]
-  (get (min-heat-loss g) [1 2])
-  )
-
-(let [g  (parse "11111
-19991
-19991
-11111")]
-  (get (min-heat-loss g) (target-pos g))
-)
-
-(let [g  (parse (user/day-input))]
-  ((min-heat-loss g)
-   (br g)))
+(defn update!
+  [m k f]
+  (assoc! m k (f (get m k))))
 
 
+(defrecord State [pos prev-dir steps-in-prev-dir total-loss path visited])
+
+(defn state-id [^State s]
+  [(.-pos s) (.-prev-dir s) (.-steps-in-prev-dir s)])
+
+;; basically Dijkstra:
+(defn min-heat-loss [allowed-dirs is-part-2 g]
+  (let [nid (volatile! 0)
+        fresh-id (fn [] (vswap! nid inc))
+        target (target-pos g)
+        init (map->State {:pos [0 0]
+                          :prev-dir nil
+                          :steps-in-prev-dir 0
+                          :total-loss 0
+                          :path [ ]
+                          :visited false})]
+    (loop [todo (pm/priority-map-keyfn :total-loss (fresh-id) init)
+           seen-states (transient {})
+           c 0]
+      (if-some [ [_ state] (peek todo)] ; entry with lowest :total-loss
+        (let [id (state-id state)
+              {:keys [pos prev-dir steps-in-prev-dir total-loss path]} state]
+          (cond
+
+            (> c 10000000)
+            (throw (ex-info "max iterations reached" {:visited-states (count seen-states)} ))
+
+            (if is-part-2
+              (and (>= steps-in-prev-dir 4)
+                     (= target (:pos state)))
+                (= target (:pos state)))
+            state
+
+            (let [found (get seen-states id)]
+              (or
+               ;; already explored this state
+               (:visited found)
+               ;; there is already a shorter path to this position
+               (> (:total-loss state) (:total-loss found Long/MAX_VALUE))))
+            (recur (pop todo)
+                   seen-states
+                   (inc c))
+
+            :else
+            (let [succ (for [d (allowed-dirs prev-dir steps-in-prev-dir)
+                             :let [npos (move pos d)
+                                   loss (get-in g npos)
+                                   nsteps-in-prev-dir (if (= d prev-dir) (inc steps-in-prev-dir) 1)]
+                             :when loss ; to check grid bounds
+                             :let [ntotal-loss (+ total-loss loss)]
+                             ;; skip states that are not better that the best known result
+                             :when (<= ntotal-loss
+                                       (:total-loss (get seen-states [npos d]) Long/MAX_VALUE))]
+                         (->State
+                          npos
+                          d
+                          nsteps-in-prev-dir
+                          ntotal-loss
+                          nil; (conj path npos)
+                          false
+                          ))]
+              (recur (-> todo
+                         pop
+                         (into (map vector (repeatedly fresh-id) succ)))
+                     (update! seen-states id
+                              (fn [lowest]
+                                (assoc (if (< (:total-loss state)
+                                              (:total-loss lowest Long/MAX_VALUE))
+                                         state
+                                         lowest)
+                                       :visited true)))
+                     (inc c)))))
+        {:err seen-states}))))
 
 
-(defn A*
- "Finds a path between start and goal inside the graph described by edges
-  (a map of edge to distance); estimate is an heuristic for the actual
-  distance. Accepts a named option: :monotonic (default to true).
-  Returns the path if found or nil."
- [edges estimate start goal & {mono :monotonic :or {mono true}}]
-  (let [f (memoize #(estimate % goal)) ; unsure the memoization is worthy
-        neighbours (reduce (fn [m [a b]] (assoc m a (conj (m a #{}) b)))
-                      {} (keys edges))]
-    (loop [q (pm/priority-map start (f start))
-           preds {}
-           shortest {start 0}
-           done #{}]
-      (when-let [[x hx] (peek q)]
-        (if (= goal x)
-          (reverse (take-while identity (iterate preds goal)))
-          (let [dx (- hx (f x))
-                bn (for [n (remove done (neighbours x))
-                         :let [hn (+ dx (edges [x n]) (f n))
-                               sn (shortest n Double/POSITIVE_INFINITY)]
-                         :when (< hn sn)]
-                     [n hn])]
-            (recur (into (pop q) bn)
-              (into preds (for [[n] bn] [n x]))
-              (into shortest bn)
-              (if mono (conj done x) done))))))))
+(defn part-1 [input]
+  (:total-loss (min-heat-loss allowed-dirs1 false
+                              (parse input))))
 
+(defn part-2 [input]
+  (:total-loss (min-heat-loss allowed-dirs2 true
+                              (parse input))))
 
-(A* nexu)
+(def ex2 "111111111111
+999999999991
+999999999991
+999999999991
+999999999991")
+
+(assert (= 71 (part-2 ex2)))
+(assert (= 94 (part-2 ex)))
+
+{:part-1 (time (part-1 (user/day-input)))
+ :part-2 (part-2 (user/day-input))}
+
+(comment
+  (part-1 ex)
+  (part-1 (user/day-input))
+
+  (time (part-2 (user/day-input)))
+
+  (let [g  (parse ex2)
+        r (min-heat-loss allowed-dirs2 true g)]
+    (pp g (:path r))
+    r)
+
+  (let [g  (parse ex)
+        r (min-heat-loss allowed-dirs2 true g)]
+    (pp g (:path r))
+    r)
+
+  (let [g  (parse (user/d))
+        r (min-heat-loss allowed-dirs2 true g)]
+    (pp g (:path r))
+    r))
