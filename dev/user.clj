@@ -16,13 +16,16 @@
 (def year "2024")
 (def day "1")
 
+(defn load-session-token []
+  (slurp "session-token"))
+
 (defn resource-path [year day]
-  (format "resources/%s/%s.txt" year (format "%02d" day)))
+  (format "resources/%s/day%s.txt" year (format "%02d" day)))
 
 (defn download [year day]
   (let [{:keys [out err exit] :as resp} (sh/sh
                                          "curl" (str "https://adventofcode.com/" (parse-long (str year)) "/day/" (parse-long (str day)) "/input")
-                                "-H" (str "Cookie: session=" (slurp "session-token")))]
+                                "-H" (str "Cookie: session=" (load-session-token)))]
     (if (zero? exit)
       (do
         (clojure.java.io/make-parents (resource-path year day))
@@ -42,10 +45,10 @@
         )
       (download year day))))
 
-(read-or-download 2024 2)
 
 (defn day-input []
-  (let [ [_ year day](str/split (str *ns*) #"\.")]
+  (let [ [_ year day]
+        (re-matches #"adventofcode\.(\d+).day(\d+)" (str *ns*))]
     (read-or-download (parse-long year) (parse-long day))))
 
 (comment
@@ -53,8 +56,9 @@
   (read-or-download 2019 1)
 
 
-  (doseq [y (range 2019 2025)
+  (doseq [y (range 2015 2024)
           d (range 1 26)]
+    (Thread/sleep 100)
     (read-or-download y d))
 
   )
