@@ -22,30 +22,35 @@
 (def ex-2 "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))")
 
 (defn parse-2 [x]
-  (let [ patterns [#"(mul\(\d+,\d+\))"
-                   #"(do\(\))"
-                   #"(don't\(\))"
+  (let [ patterns [#"((mul)\(\d+,\d+\))"
+                   #"((do)\(\))"
+                   #"((don't)\(\))"
                    ]]
-    (map first (re-seq (re-pattern (str/join "|" (map str patterns))) x))))
+    (map
+     (juxt first  ; full match
+           (comp last (partial remove nil?)) ; get group
+           )
+     (re-seq (re-pattern (str/join "|" (map str patterns))) x))))
 
 (parse-2 ex-2)
 
 (defn part-2 [x]
   (first (reduce
-          (fn [ [sum enabled] match ]
-            (cond
-                (str/starts-with? match "mul(")
-                (if enabled
-                  [(+ sum (part-1 match)) enabled]
-                  [sum enabled])
-                (str/starts-with? match "don't(")
-                [sum false]
-                (str/starts-with? match "do(")
-                [sum true]))
+          (fn [ [sum enabled] [match prefix] ]
+            (case prefix
+              "mul"
+              [(+ sum (if enabled (part-1 match) 0)) enabled]
+              "don't"
+              [sum false]
+              "do"
+              [sum true]))
           [0 true]
           (parse-2 x))))
 
+
 (assert (= 48 (part-2 ex-2)))
 
-{:part-1 (part-1 (user/day-input))
- :part-2 (part-2 (user/day-input))}
+(let [input (user/day-input)]
+  (time
+   {:part-1 (part-1 input)
+    :part-2 (part-2 input)}))
