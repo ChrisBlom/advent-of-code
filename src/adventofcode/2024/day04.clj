@@ -39,7 +39,7 @@ MXMXAXMASX
            up-left down-right down-left up-right
            ])
 
-(defn find-dir [grid dir word pos]
+(defn find-word [grid dir word pos]
   (let [[y x] pos]
     (cond
       (empty? word)
@@ -53,7 +53,7 @@ MXMXAXMASX
 (defn find-all [grid]
   (for [pos (positions grid)
         dir dirs]
-    (find-dir grid dir (seq "XMAS") pos)))
+    (find-word grid dir (seq "XMAS") pos)))
 
 (defn part-1 [x]
   (count (filter identity (find-all (parse x)))))
