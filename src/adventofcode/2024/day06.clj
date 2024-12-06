@@ -28,16 +28,20 @@
 
 (start-pos (parse ex))
 
+(defn v+ [a b]
+  [(+ (a 0) (b 0))
+   (+ (a 1) (b 1))])
+
 (defn start-state [grid]
   {:pos (start-pos grid)
    :dir u/up
    :visited #{}})
 
 (defn step [grid {:keys [pos dir visited] :as s}]
-  (let [npos (mapv + pos dir)
+  (let [npos (v+ pos dir)
         at-npos (get-in grid npos)
         ;; track pos,dir for cycle detection
-        state-key (dissoc s :visited)
+        state-key [pos dir]
         nvisited (conj visited state-key)]
     (if (visited state-key) ;; we enter a loop if we visit a position twice with the same direction
       {:done true :loop true}
@@ -73,7 +77,7 @@
          (walk-path step (start-state grid))
          last
          :visited
-         (map :pos)
+         (map first) ; pos
          distinct
          count)))
 
@@ -89,15 +93,13 @@
     (->>
      (window-pairs walked)
      ;; only process first occurance of insert pos
-     ;; to reduce work and avoid duplicate
+     ;; to reduce work and avoid inserting a # in an already visited position
      (u/distinct-by (comp :pos second))
-     (filter (fn [ [prev-state next-state] ]
+     (pmap (fn [ [prev-state next-state] ]
                    (let [insert-pos (:pos next-state)]
                      (and
                       ;; can't insert # if it already there
                       (not= \# (get-in grid insert-pos))
-                      ;; can't insert if we already visited the pos
-                      (not (contains? (:visited prev-state) insert-pos))
                       ;; check if walk ends in loop
                       (:loop
                        (last (walk-path
@@ -105,6 +107,7 @@
                               ;; reuse state from initial walk,
                               prev-state
                               (assoc-in grid insert-pos \#))))))))
+     (filter identity)
      count)))
 
 (assert (= 6 (part-2 ex)))
