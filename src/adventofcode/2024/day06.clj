@@ -36,9 +36,10 @@
 (defn step [grid {:keys [pos dir visited] :as s}]
   (let [npos (mapv + pos dir)
         at-npos (get-in grid npos)
+        ;; track pos,dir for cycle detection
         state-key (dissoc s :visited)
         nvisited (conj visited state-key)]
-    (if (visited state-key) ;; we enter a loop if we visit a positions twice with the same direction
+    (if (visited state-key) ;; we enter a loop if we visit a position twice with the same direction
       {:done true :loop true}
       (case at-npos
         nil (-> s
@@ -85,24 +86,26 @@
   (let [grid (parse input)
         start (start-state grid)
         walked (walk-path step start grid)]
-    (->> (window-pairs walked)
-     (u/distinct-by (comp :pos second)) ; only process first occurance of insert pos
-     (u/counting (fn [ [prev-state next-state] ]
+    (->>
+     (window-pairs walked)
+     ;; only process first occurance of insert pos
+     ;; to reduce work and avoid duplicate
+     (u/distinct-by (comp :pos second))
+     (filter (fn [ [prev-state next-state] ]
                    (let [insert-pos (:pos next-state)]
                      (and
                       ;; can't insert # if it already there
                       (not= \# (get-in grid insert-pos))
+                      ;; can't insert if we already visited the pos
+                      (not (contains? (:visited prev-state) insert-pos))
                       ;; check if walk ends in loop
                       (:loop
                        (last (walk-path
                               step
                               ;; reuse state from initial walk,
-                              ;; but only if the positing were we insert #
-                              ;; was not visited in that walk
-                              (if (contains? (:visited prev-state) insert-pos)
-                                start
-                                prev-state)
-                              (assoc-in grid insert-pos \#)))))))))))
+                              prev-state
+                              (assoc-in grid insert-pos \#))))))))
+     count)))
 
 (assert (= 6 (part-2 ex)))
 

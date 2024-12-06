@@ -81,6 +81,17 @@
       (with-out-str
         ~@body))))
 
+(defmacro graphviz-digraph [& args]
+  (let [ [cmd body] (if (keyword (first args))
+                      [ (first args) (rest args)]
+                      [ :neato args])]
+    `(show-dot
+      (with-out-str
+        (println "digraph {")
+        ~@body)
+        (println "}")
+      )))
+
 
 (defn distinct-by [f coll]
   (let [step (fn step [xs seen]
@@ -93,3 +104,14 @@
                          (cons x (step (rest s) (conj seen x)))))))
                  xs seen)))]
     (step coll #{})))
+
+
+(defn setup-day [year day]
+  (let [path (format "src/adventofcode/%d/day02%d.clj" year day)]
+    (io/make-parents path)
+    (-> (slurp (io/resource "template.clj"))
+        (str/replace "<year>" (str year))
+        (str/replace "<day>"  (format "%02d" day))
+        (->> (spit path)))))
+
+(setup-day 1900 01)
