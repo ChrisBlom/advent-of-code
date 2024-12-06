@@ -18,12 +18,15 @@
 (defn parse [x]
   (mapv vec (str/split-lines x)))
 
+(defn at [grid [y x]]
+  (get (get grid y) x))
+
 (parse ex)
 
 (defn start-pos [grid]
   (first
    (filter
-    (fn [pos] (= \^ (get-in grid pos)))
+    (fn [pos] (= \^ (at grid pos)))
     (u/grid-positions grid))))
 
 (start-pos (parse ex))
@@ -35,16 +38,16 @@
 (defn start-state [grid]
   {:pos (start-pos grid)
    :dir u/up
-   :visited #{}})
+   :visited {} ; {pos #{dir}}
+   })
 
 (defn step [grid {:keys [pos dir visited] :as s}]
-  (let [npos (v+ pos dir)
-        at-npos (get-in grid npos)
-        ;; track pos,dir for cycle detection
-        state-key [pos dir]
-        nvisited (conj visited state-key)]
-    (if (visited state-key) ;; we enter a loop if we visit a position twice with the same direction
-      {:done true :loop true}
+  ;; track pos,dir for cycle detection
+  (if (contains? (get visited pos) dir) ;; we enter a loop if we visit a position twice with the same direction
+    {:done true :loop true}
+    (let [npos (v+ pos dir)
+          at-npos (at grid npos)
+          nvisited (update visited pos (fnil conj #{}) dir)]
       (case at-npos
         nil (-> s
                 (assoc :done true
@@ -71,14 +74,18 @@
        (iterate (partial step grid))
        (take-while+ (complement :done))))
 
+(defn ends-in-loop? [grid state]
+  (if (:done state)
+    (:loop state)
+    (recur grid (step grid state))))
+
 (defn part-1 [input]
   (let [grid (parse input)]
     (->> grid
          (walk-path step (start-state grid))
          last
          :visited
-         (map first) ; pos
-         distinct
+         keys
          count)))
 
 (assert (= 41 (part-1 ex)))
@@ -99,14 +106,11 @@
                    (let [insert-pos (:pos next-state)]
                      (and
                       ;; can't insert # if it already there
-                      (not= \# (get-in grid insert-pos))
+                      (not= \# (at grid insert-pos))
                       ;; check if walk ends in loop
-                      (:loop
-                       (last (walk-path
-                              step
-                              ;; reuse state from initial walk,
-                              prev-state
-                              (assoc-in grid insert-pos \#))))))))
+                      (ends-in-loop? (assoc-in grid insert-pos \#)
+                       ;; reuse state from initial walk,
+                       prev-state)))))
      (filter identity)
      count)))
 
@@ -116,6 +120,13 @@
  :part-2 (time (part-2 (user/day-input)))}
 
 
+
+
 (comment
+
+
+  (-/jfr-record
+  (dotimes [i 10]
+    (part-2 (user/day-input))))
 
   )
