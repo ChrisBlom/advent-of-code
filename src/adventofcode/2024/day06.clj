@@ -4,8 +4,6 @@
    [clojure.math :as math]
    [clojure.string :as str]))
 
-(set! *warn-on-reflection* true)
-
 (def ex "....#.....
 .........#
 ..........
@@ -17,41 +15,19 @@
 #.........
 ......#...")
 
-(defprotocol GridLookup
-  (at [grid [y x]])
-  (add-override [_ [y x]]))
-
-(defrecord G [^"[C" s ^int h ^int w ^int oy ^int ox]
-  GridLookup
-  (at [_ [y x]]
-    (when (and (<= 0 x (dec w))
-               (<= 0 y (dec h)))
-      (if (and (= y oy) (= x ox))
-        \#
-        (aget (chars s)
-              (int (+ x (* y w)))))))
-
-  (add-override [_ [y x] ]
-    (->G s h w y x)))
-
 (defn parse [x]
-  (let [lines (str/split-lines x)
-        g (mapv vec lines)]
-    (->G (char-array (str/join lines))
-         (count g)
-         (count (g 0))
-         -10
-         -10)))
+  (mapv vec (str/split-lines x)))
+
+(defn at [grid [y x]]
+  (get (get grid y) x))
 
 (parse ex)
 
-(defn start-pos [^G g]
+(defn start-pos [grid]
   (first
    (filter
-    (fn [pos] (= \^ (at g pos)))
-    (for [y (range 0 (.-h g))
-          x (range 0 (.-w g))]
-      [y x]))))
+    (fn [pos] (= \^ (at grid pos)))
+    (u/grid-positions grid))))
 
 (start-pos (parse ex))
 
@@ -123,16 +99,16 @@
         walked (walk-path step start grid)]
     (->>
      (window-pairs walked)
-     ;; only process first occurance of add-override pos
+     ;; only process first occurance of insert pos
      ;; to reduce work and avoid inserting a # in an already visited position
      (u/distinct-by (comp :pos second))
      (pmap (fn [ [prev-state next-state] ]
                    (let [insert-pos (:pos next-state)]
                      (and
-                      ;; can't add-override # if it already there
+                      ;; can't insert # if it already there
                       (not= \# (at grid insert-pos))
                       ;; check if walk ends in loop
-                      (ends-in-loop? (add-override grid insert-pos)
+                      (ends-in-loop? (assoc-in grid insert-pos \#)
                        ;; reuse state from initial walk,
                        prev-state)))))
      (filter identity)
@@ -143,10 +119,14 @@
 {:part-1 (part-1 (user/day-input))
  :part-2 (time (part-2 (user/day-input)))}
 
+
+
+
 (comment
 
+
   (-/jfr-record
-  (dotimes [i 20]
+  (dotimes [i 10]
     (part-2 (user/day-input))))
 
   )
