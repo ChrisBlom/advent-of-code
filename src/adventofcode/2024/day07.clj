@@ -38,9 +38,8 @@
   (let [lines (parse input)]
     (reduce  + 0
      (keep (fn [ [target & [ h & t]]]
-             (when (pos? (possible-solutions target h t))
-               target
-               ))
+             (when (pos? (possible-solutions-1 target h t))
+               target))
            lines))))
 
 (part-1 ex)
@@ -73,18 +72,62 @@
           (calibrated-2? target (* acc h) t)
           (calibrated-2? target (|| acc h) t)))))
 
+(defn digits [x]
+  (if (zero? x)
+    1
+    (int (inc  (math/floor (math/log10 x))))))
+
+(assert (= (digits 1) 1))
+(assert (= (digits 0) 1))
+(assert (= (digits 10) 2))
+(assert (= (digits 99) 2))
+(assert (= (digits 100) 3))
+
+(defn remove-suffix [all suffix]
+  (let [a   (/ (- all suffix) (int (Math/pow 10 (digits suffix))))]
+    (if (pos-int? a)
+      a)))
+
+(assert (= (remove-suffix 123 23) 1))
+(assert (= (remove-suffix 123 123)) nil)
+
+(defn calibrated-2-fast? [  acc todo]
+  (cond
+    (nil? acc)
+    false
+
+    (not (integer? acc))
+    false
+
+    :else
+    (let [h (peek todo)
+          t (pop todo)]
+      (if (empty? t)
+        (= h acc)
+        (or
+         (calibrated-2-fast?  (/ acc h) t)
+         (calibrated-2-fast?  (remove-suffix acc h) t )
+         (calibrated-2-fast?  (- acc h) t )
+         )))))
+
+(assert (calibrated-2-fast? 156 [15 6]))
+(assert (calibrated-2-fast? 7290 [6 8 6 15]))
+(assert (calibrated-2-fast? 156 [15 6]))
+(assert (calibrated-2-fast? 192 [17 8 14]))
+
 (defn part-2 [input]
   (let [lines (parse input)]
     (->> lines
-         (keep (fn [ [target & [ h & t]]]
-                 (if (calibrated-2? target h t)
-                   target)))
+         (map (fn [ [target & [ h & t :as nums]]]
+                (if #_(calibrated-2? target h t)
+                    (calibrated-2-fast? target (vec  nums))
+                    target)))
+         (filter identity)
          (reduce  + 0))))
 
 (assert (* (|| (* 6 8) 6)  15) 7290)
+(assert (= (part-2 ex) 11387))
 
-(assert (= (part-2 ex)
-           11387))
-
-{:part-1 (part-1 (user/day-input))
- :part-2 (time (part-2 (user/day-input)))}
+(let [i (user/day-input)]
+  {:part-1 (part-1 (user/day-input))
+   :part-2 (time (part-2 i ))})
