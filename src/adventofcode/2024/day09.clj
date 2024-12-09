@@ -36,12 +36,12 @@
    blocks))
 
 (defn checksum [blocks]
-  (apply +
+  (reduce + 0
          (map-indexed (fn [i c]
                         (* i (or c 0)))
                       (id-seq blocks))))
 
-(defn find-last-block [todo]
+(defn find-last-file-block [todo]
   (->> todo
        (keep-indexed (fn [i b]
                        (when (pos? (:file-size b))
@@ -58,7 +58,7 @@
               (rest todo))
        :else
        (let [tail (rest todo)
-             [i move-block] (find-last-block tail )]
+             [i move-block] (find-last-file-block tail )]
          (if-not move-block
            (concat done todo)
            (let [file-moved (min free-size (:file-size move-block))]
@@ -92,13 +92,6 @@
             [i b]
             (recur (inc i))))))))
 
-(defn insert-after [v i a]
-  (->
-   (subvec v 0 (inc i))
-   (conj a)
-   (into (subvec v (inc i) (count v)))))
-
-
 (insert-after [1 2 3] 0 'a)
 (insert-after [1 2 3] 1 'a)
 (insert-after [1 2 3] 2 'a)
@@ -107,9 +100,7 @@
   ([blocks] (defrag (list) blocks))
   ([done todo]
    (if-some [{:keys [id file-size free-size] :as block-to-move} (peek todo)]
-     ^{:break/when (= id 4)}
      (cond
-
        (or (:moved block-to-move)
            (zero? file-size))
        (recur (conj done block-to-move)
@@ -129,19 +120,18 @@
                            (assoc :file-size 0)
                            (assoc :free-size (+ file-size
                                                 free-size))))
-
             (-> tail
-                (assoc i (-> move-to-block
-                             (assoc :free-size 0)))
-                (insert-after i
-                              (-> block-to-move
-                                  (assoc
-                                   :moved true
-                                   :free-size (-
-                                               (:free-size move-to-block)
-                                               (:file-size block-to-move))))))))))
+                (subvec 0 i)
+                (conj (assoc move-to-block :free-size 0))
+                (conj (assoc block-to-move
+                             :moved true
+                             :free-size (- (:free-size move-to-block)
+                                           (:file-size block-to-move))))
+                (into (subvec tail (inc i) (count tail))))))))
      done
      )))
+
+(subvec [1 2 3] 0 1)
 
 (assert
  (= (render (defrag (parse ex)))
