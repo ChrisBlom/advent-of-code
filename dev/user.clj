@@ -107,11 +107,21 @@
 
 
 (defn setup-day [year day]
-  (let [path (format "src/adventofcode/%d/day02%d.clj" year day)]
-    (io/make-parents path)
-    (-> (slurp (io/resource "template.clj"))
-        (str/replace "<year>" (str year))
-        (str/replace "<day>"  (format "%02d" day))
-        (->> (spit path)))))
+  (let [path (io/file (format "src/adventofcode/%d/day%02d.clj" year day))]
+    (if (.exists path)
+      :already-exists
+      (do
+        (io/make-parents path)
+        (-> (slurp (io/resource "template.clj"))
+            (str/replace "<year>" (str year))
+            (str/replace "<day>"  (format "%02d" day))
+            (->> (spit path)))
+        (read-or-download year day)))))
 
-(setup-day 1900 01)
+
+(defn setup-today []
+  (import '[java.time LocalDate])
+  (let [today (LocalDate/now)]
+    (setup-day
+     (.getYear today)
+     (.getDayOfMonth today))))
