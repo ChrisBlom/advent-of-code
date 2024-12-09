@@ -119,8 +119,9 @@
         (read-or-download year day)))))
 
 
+(import '[java.time LocalDate])
+
 (defn setup-today []
-  (import '[java.time LocalDate])
   (let [today (LocalDate/now)]
     (setup-day
      (.getYear today)
