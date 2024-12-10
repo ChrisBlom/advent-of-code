@@ -11,6 +11,20 @@
         x (range 0 (count (grid 0)))]
     [y x]))
 
+(defn grid-seq [grid]
+  (map-indexed (fn [y line]
+                 (map-indexed (fn [x v] [[y x] v]) line))
+               grid))
+
+(defn grid-map
+  "takes a fn with two args [y x] and v
+   Applies the function for each [y x] position and value at that position
+   of the grid and returns a seq of the results"
+  [pos-value-fn grid]
+  (map-indexed (fn [y line]
+                 (map-indexed (fn [x v] (pos-value-fn [y x] v)) line))
+               grid))
+
 (def up [-1 0])
 (def down [1 0])
 (def right [0 1])
