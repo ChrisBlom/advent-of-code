@@ -13,19 +13,13 @@
 8.....8
 9.....9")
 
-(defn parse [x]
-  (mapv
-   (fn [l]
-     (mapv (fn [c]
-            (case c
-              \. nil
-              (parse-long (str c))))
-          l))
-   (remove str/blank? (str/split-lines x))))
+(defn parse [s]
+  (->> s
+       str/split-lines
+       (remove str/blank?)
+       (mapv (fn [l] (mapv (fn [c] (parse-long (str c))) l)))))
 
 (parse ex)
-
-(part-1 (user/day-input))
 
 (defn pp [grid]
   (doseq [line grid]
@@ -33,32 +27,16 @@
       (print (or c \.)))
     (println)))
 
-(def up [-1 0])
-(def down [1 0])
-(def right [0 1])
-(def left [0 -1])
-
-(def dirs [up down left right])
-
-
-(u/grid-seq (parse ex))
-
 (defn reachable-9s
   ([grid]
-
-   (keep (fn [ [pos v] ]
-           (when (and v (zero? v))
-             (reachable-9s grid pos 0)))
-         (u/grid-seq grid)))
-
+   (->>(u/grid-seq grid)
+       (keep (fn [ [pos v] ] (when (and v (zero? v))
+                              (reachable-9s grid pos 0))))))
   ([grid pos step-counter]
    (case step-counter
      9 [pos]
-     (for [dir dirs
-           :let [next-pos (mapv + pos dir)
-                 at-next-pos (get-in grid next-pos)]
-           :when (and at-next-pos
-                      (= at-next-pos (inc step-counter)))
+     (for [next-pos (u/grid-neighbours pos)
+           :when (= (get-in grid next-pos) (inc step-counter))
            reachable (reachable-9s grid next-pos (inc step-counter))]
        reachable))))
 
@@ -98,7 +76,8 @@
   (reduce + (map count (reachable-9s (parse i)))))
 
 (assert (= 3
-           (part-2 ".....0.
+           (part-2 "
+.....0.
 ..4321.
 ..5..2.
 ..6543.
@@ -108,7 +87,8 @@
 ")))
 
 (assert
- (= 13 (part-2 "..90..9
+ (= 13 (part-2 "
+..90..9
 ...1.98
 ...2..7
 6543456
@@ -117,7 +97,8 @@
 987....")))
 
 (assert
- (= 227  (part-2 "012345
+ (= 227  (part-2 "
+012345
 123456
 234567
 345678
@@ -125,10 +106,10 @@
 56789.
 ")))
 
-(assert (=
-         (reduce + [20, 24, 10, 4, 1, 4, 5, 8,  5])
-         (part-2
-          "89010123
+(assert (= (reduce + [20, 24, 10, 4, 1, 4, 5, 8,  5])
+           (part-2
+            "
+89010123
 78121874
 87430965
 96549874

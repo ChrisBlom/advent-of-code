@@ -5,6 +5,19 @@
   [m k f]
   (assoc! m k (f (get m k))))
 
+(def up [-1 0])
+(def down [1 0])
+(def right [0 1])
+(def left [0 -1])
+
+(def dirs [up down left right])
+
+(defn v+ [a b]
+  [(+ (a 0) (b 0))
+   (+ (a 1) (b 1))])
+
+(defn grid-neighbours [yx]
+  (map #(v+ yx %) dirs))
 
 (defn grid-positions [grid]
   (for [y (range 0 (count grid))
@@ -12,9 +25,9 @@
     [y x]))
 
 (defn grid-seq [grid]
-  (map-indexed (fn [y line]
-                 (map-indexed (fn [x v] [[y x] v]) line))
-               grid))
+  (reduce concat (map-indexed (fn [y line]
+                                (map-indexed (fn [x v] [[y x] v]) line))
+                              grid)))
 
 (defn grid-map
   "takes a fn with two args [y x] and v
