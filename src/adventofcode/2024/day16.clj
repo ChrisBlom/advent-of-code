@@ -1,6 +1,6 @@
 (ns adventofcode.2024.day16
   (:require
-   [clojure.data.priority-map :as pm]
+   [shams.priority-queue :as pq]
    [adventofcode.utils :as u :refer [v+ left right up down]]
    [clojure.math :as math]
    [clojure.string :as str]))
@@ -88,18 +88,16 @@
   (assoc! m k (f (get m k) )))
 
 (defn shortest-path [grid]
-  (let [nid (volatile! 0)
-        fresh-id (fn [] (vswap! nid inc))
-        target (target-pos grid)
+  (let [target (target-pos grid)
         init {:pos (start-pos grid)
               :score 0
               :dir u/right
               :path [ ]
               :visited false}]
-    (loop [todo (pm/priority-map-keyfn :score (fresh-id) init)
+    (loop [todo (conj (pq/priority-queue (comp - :score)) init)
            seen-states (transient {})
            c 0]
-      (if-some [ [_ state] (peek todo)] ; entry with lowest :score
+      (if-some [ state (peek todo)] ; entry with lowest :score
         (let [id (select-keys state [:pos :dir])
               {:keys [pos score dir]} state]
           (cond
@@ -122,9 +120,7 @@
 
             :else
             (let [succ (next-states grid state)]
-              (recur (-> todo
-                         pop
-                         (into (map vector (repeatedly fresh-id) succ)))
+              (recur (into (pop todo) succ)
                      (update! seen-states id
                               (fn [lowest]
                                 (assoc (if (< (:score state)
@@ -141,40 +137,35 @@
 (assert (= 7036 (part-1 ex)))
 (assert (= 11048 (part-1 ex2)))
 
-
 ;; variation of shortest-path
 ;; differences are marked in comments
 (defn shortest-paths [grid]
-  (let [nid (volatile! 0)
-        fresh-id (fn [] (vswap! nid inc))
-        target (target-pos grid)
+  (let [target (target-pos grid)
         init {:pos (start-pos grid)
               :score 0
               :dir u/right
               :path [ ]
               :visited false}]
-    (loop [todo (pm/priority-map-keyfn :score (fresh-id) init)
+    (loop [todo (-> (pq/priority-queue (comp - :score))
+                    (conj init))
            seen-states (transient {})
            best-paths []
            best-path-score nil
            c 0]
-      (if-some [ [_ state] (peek todo)] ; entry with lowest :score
-        (let [id (select-keys state [:pos :dir ])
-              {:keys [pos score dir]} state]
+      (if-some [ state (peek todo)] ; entry with lowest :score
+        (let [{:keys [pos score dir]} state
+              id [pos dir]]
           (cond
 
-            (> c 1000000000)
-            (throw (ex-info "max iterations reached" {:best best-paths} ))
-
-            (= target (:pos state))
+            (= target pos)
             (if (or (nil? best-path-score)
-                    (= (:score state) best-path-score))
+                    (= score best-path-score))
 
               ;; collection solutions with the optimal score
               (recur (pop todo)
                      seen-states
                      (conj best-paths (update state :path conj pos))
-                     (:score state)
+                     score
                      (inc c))
 
               ;; as solutions are sorted decreasing by score
@@ -188,7 +179,7 @@
                #_(:visited found)
 
                ;; there is already a shorter path to this position
-               (> (:score state)
+               (> score
                   (:score found Long/MAX_VALUE))))
             (recur (pop todo)
                    seen-states
@@ -198,13 +189,11 @@
 
             :else
             (let [succ (next-states grid state)]
-              (recur (-> todo
-                         pop
-                         (into (map vector (repeatedly fresh-id) succ)))
+              (recur (into (pop todo) succ)
                      (update! seen-states id
                               (fn [lowest]
                                 ;; replaced < with <= as we want to explore equally good solutions
-                                (assoc (if (<= (:score state)
+                                (assoc (if (<= score
                                                (:score lowest Long/MAX_VALUE))
                                          state
                                          lowest)
@@ -221,10 +210,11 @@
 
 
 (assert (= 45 (part-2 ex)))
-(assert (= 64 (part-2 ex2)))
+(assert (= 64 (time (part-2 ex2))))
 
 {:part-1 (part-1 (user/day-input))
- :part-2 (time (part-2 (user/day-input)))}
+
+ :part-2 (time  (part-2 (user/day-input)))}
 
 (comment
 
