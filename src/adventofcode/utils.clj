@@ -54,6 +54,10 @@
   [ y (- x)])
 
 
+(assert (= right (rot-right up)))
+(assert (= left (rot-left up)))
+
+
 (defn distinct-by [f coll]
   (let [step (fn step [xs seen]
                (lazy-seq
@@ -167,3 +171,12 @@
 
                    (inc c))))
         {:err seen-states}))))
+(defn take-while+
+  "like `take-while` but includes the first
+   item where (pred item) does not return logical true"
+  [pred coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (if (pred (first s))
+       (cons (first s) (take-while+ pred (rest s)))
+       (list (first s))))))
