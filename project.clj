@@ -4,7 +4,7 @@
   :source-paths ["src" "dev"]
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12."]
+  :dependencies [[org.clojure/clojure "1.12.0"]
                  [net.mikera/imagez "0.12.0"]
                  [clojure2d "1.4.3"]
                  [midje "1.9.0"]
