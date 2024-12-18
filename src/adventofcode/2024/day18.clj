@@ -47,7 +47,7 @@
     (if-some [state (peek todo)]  ;; gets entry with lowest value for score-fn in todo
       (let [state-key (key-fn state)
             state-score (score-fn state)
-            seen-score (get best-scores state-key)]
+            best-score-for-key (get best-scores state-key)]
         (cond
           (> c 10000000)
           (throw (ex-info "too many iters" {:todo (count todo)}))
@@ -55,7 +55,7 @@
           (target? state)
           state
 
-          (and seen-score (<= seen-score state-score))
+          (and best-score-for-key (<= best-score-for-key state-score))
           (recur (pop todo) best-scores (inc c))
 
           :else
@@ -65,10 +65,7 @@
                                   (get best-scores (key-fn s) Long/MAX_VALUE) ))
                              succ)]
             (recur (into (pop todo) succ)
-                   (if (and seen-score (<= seen-score state-score))
-                     best-scores
-                     (assoc! best-scores state-key state-score))
-
+                   (assoc! best-scores state-key state-score)
                    (inc c)))))
       {:exhausted-search-space (count best-scores)})))
 
@@ -89,7 +86,7 @@
   (let [t [(dec (count g))
            (dec (count (g 0)))]]
     (assert (get-in g t))
-    (fn [{:keys [pos]}] (= t pos))))
+    (fn target? [{:keys [pos]}] (= t pos))))
 
 (defn simulate-drops-all [byte-coords]
   (let [h (inc (reduce max (map second byte-coords)))
