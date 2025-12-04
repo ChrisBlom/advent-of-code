@@ -20,7 +20,9 @@
 (defn removeable [gm]
   (for [[yx v] gm
         :when (= v \@)
-        :when (< (u/counting (fn [n] (= (gm n) \@)) (u/grid-neighbours-8 yx)) 4)]
+        :when (< (u/counting (fn [n] (= (gm n) \@))
+                             (u/grid-neighbours-8 yx))
+                 4)]
     yx))
 
 (defn part-1 [x]
@@ -42,5 +44,6 @@
      (u/counting #{\@} (vals gm))
      (u/counting #{\@} (vals (iter step gm))))))
 
+
 {:part-1 (part-1 (user/day-input))
- :part-2 (part-2 (user/day-input))}
+ :part-2 (time (part-2 (user/day-input)))}
