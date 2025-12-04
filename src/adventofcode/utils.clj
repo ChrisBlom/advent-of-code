@@ -19,6 +19,12 @@
 (defn grid-neighbours [yx]
   (map #(v+ yx %) dirs))
 
+(defn grid-neighbours-8 [ [y x]]
+  (for [ dy (range -1 2)
+         dx (range -1 2)
+        :when (not (and (zero? dy) (zero? dx)))]
+    [(+ y dy) (+ x dx)]))
+
 (defn grid-positions [grid]
   (for [y (range 0 (count grid))
         x (range 0 (count (grid 0)))]
