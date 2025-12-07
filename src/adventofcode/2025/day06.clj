@@ -8,12 +8,12 @@
 
 (defn parse-line [x]
   (read-string (format "[%s]" x)))
+
 (defn parse [x]
   (map parse-line (str/split-lines x)))
 
-
 (defn part-1 [ex]
-  (reduce + (map eval (apply  map  (comp reverse vector) (parse ex)))))
+  (eval (cons '+ (apply map (comp reverse vector) (parse ex)))))
 
 
 (defn transpose [vs]

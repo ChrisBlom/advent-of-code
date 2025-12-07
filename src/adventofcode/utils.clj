@@ -130,53 +130,10 @@
         {:err seen-states}))))
 
 
-;; TODO
-(defn a-star
-  [start-state
-   next-states-fn
-   target-state?
-   dist-fn ; distance so far
-   heuristic-fn ; admissible heuristic
-   state-key ]
-  (let [nid (volatile! 0)
-        fresh-id (fn [] (vswap! nid inc))]
-    (loop [todo (pm/priority-map-keyfn (fn [s] (+ (dist-fn s) (heuristic-fn s))) (fresh-id) start-state)
-           seen-states (transient {})
-           c 0]
-      (if-some [ [_ state] (peek todo)] ; entry with state-lowest-dist dist-fn
-        (cond
-          (> c 10000000)
-          (throw (ex-info "max iterations reached" {:visited-states (count seen-states)} ))
 
-          (target-state? state)
-          state
+(inc 0 )
+(inc 1 )
 
-          (let [found (contains? seen-states (state-key state))]
-            (or
-             ;; already explored this state
-             (:visited found)
-             ;; there is already a shorter path to this position
-             (> (dist-fn state)
-                (dist-fn found))))
-
-          (recur (pop todo)
-                 seen-states
-                 (inc c))
-          :else
-          (let [succ (next-states-fn state)]
-            (recur (-> todo
-                       pop
-                       (into (map vector (repeatedly fresh-id) succ)))
-                   (update! seen-states state-key
-                            (fn [state-lowest-dist]
-                              (assoc (if (< (dist-fn state)
-                                            (dist-fn state-lowest-dist Long/MAX_VALUE))
-                                       state
-                                       state-lowest-dist)
-                                     :visited true)))
-
-                   (inc c))))
-        {:err seen-states}))))
 (defn take-while+
   "like `take-while` but includes the first
    item where (pred item) does not return logical true"
@@ -186,3 +143,26 @@
      (if (pred (first s))
        (cons (first s) (take-while+ pred (rest s)))
        (list (first s))))))
+
+(import '[java.util.concurrent.atomic AtomicLong])
+
+(defmacro fn-memoized [name args & body]
+  `(let [cache# (volatile! {})
+         hits# (AtomicLong.)
+         misses# (AtomicLong.)]
+     (with-meta
+       (fn ~name [~@args]
+         (if-let [hit# (get @cache# ~args)]
+           (do (.incrementAndGet hits#)
+               hit#)
+           (let [res# (do ~@body)]
+             (.incrementAndGet misses#)
+             (vswap! cache# assoc ~args res#)
+             res#)))
+       {#_#_:cache @cache#
+        :hit hits#
+        :misses misses#})))
+
+(let [f (fn-memoized a [x] (inc x))]
+  (f 1)
+  (meta f))
