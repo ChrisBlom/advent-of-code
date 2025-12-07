@@ -73,16 +73,15 @@
 
 (defn part-2 [input]
   (let [grid (parse input)
-        count-options
-        (u/fn-memoized solve [pos]
-          (let [v (get-in grid pos)]
-            (case v
-              \^
-              (+ (solve (mapv + pos left down))
-                 (solve (mapv + pos right down)))
-              (\S \.) (solve (mapv + pos down))
-              nil 1
-              )))]
+        count-options (u/fn-memoized count-options* [pos]
+                        (let [v (get-in grid pos)]
+                          (case v
+                            \^
+                            (+ (count-options* (mapv + pos left down))
+                               (count-options* (mapv + pos right down)))
+                            (\S \.) (count-options* (mapv + pos down))
+                            nil 1
+                            )))]
     (count-options (start-pos grid))))
 
 (assert (= 40 (part-2 ex)))
