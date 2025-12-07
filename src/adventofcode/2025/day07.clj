@@ -83,10 +83,7 @@
               (\S \.) (solve (mapv + pos down))
               nil 1
               )))]
-    (let [res (count-options (start-pos grid))]
-      #_(println (meta count-options))
-      res
-      )))
+    (count-options (start-pos grid))))
 
 (assert (= 40 (part-2 ex)))
 
