@@ -40,7 +40,9 @@
 #################")
 
 (defn parse [x]
-  (mapv vec (str/split-lines x)))
+  (mapv (fn [line]
+          (mapv #(case % \# nil %) line))
+        (str/split-lines x)))
 
 (defn start-pos [grid]
   (first (keep (fn [[pos v]]
@@ -63,21 +65,17 @@
         pr (v+ pos dr)
         pl (v+ pos dl)]
     (cond-> []
-      (not= \# (get-in grid pr))
+      (get-in grid pr)
       (conj {:pos pr
              :dir dr
              :score (+ score 1001)
-             :path (conj path pos)
-             })
-
-      (not= \# (get-in grid pl))
+             :path (conj path pos)})
+      (get-in grid pl)
       (conj {:pos pl
              :dir dl
              :score (+ score 1001)
-            :path (conj path pos)
-             })
-
-      (not= \# (get-in grid pfw))
+             :path (conj path pos)})
+      (get-in grid pfw)
       (conj {:pos pfw
              :dir dir
              :score (inc score)
@@ -89,7 +87,8 @@
 
 (defn shortest-path [grid]
   (let [target (target-pos grid)
-        init {:pos (start-pos grid)
+        start (start-pos grid)
+        init {:pos start
               :score 0
               :dir u/right
               :path [ ]
@@ -97,37 +96,24 @@
     (loop [todo (conj (pq/priority-queue (comp - :score)) init)
            seen-states (transient {})
            c 0]
-      (if-some [ state (peek todo)] ; entry with lowest :score
+      (if-some [ state (peek todo)]     ; entry with lowest-seen :score
         (let [id (select-keys state [:pos :dir])
               {:keys [pos score dir]} state]
           (cond
-
-            (> c 100000)
-            (throw (ex-info "max iterations reached" {:visited-states (count seen-states)} ))
-
             (= target (:pos state))
             state
 
-            (let [found (get seen-states id)]
-              (or
-               ;; already explored this state
-               (:visited found)
-               ;; there is already a shorter path to this position
-               (> (:score state) (:score found Long/MAX_VALUE))))
-            (recur (pop todo)
-                   seen-states
-                   (inc c))
+            (> score (:score (get seen-states id) Long/MAX_VALUE))
+            (recur (pop todo) seen-states (inc c))
 
             :else
             (let [succ (next-states grid state)]
               (recur (into (pop todo) succ)
                      (update! seen-states id
-                              (fn [lowest]
-                                (assoc (if (< (:score state)
-                                              (:score lowest Long/MAX_VALUE))
-                                         state
-                                         lowest)
-                                       :visited true)))
+                              (fn [lowest-seen]
+                                (if (< score (:score lowest-seen Long/MAX_VALUE))
+                                  state
+                                  lowest-seen)))
                      (inc c)))))
         {:err seen-states}))))
 
@@ -141,6 +127,7 @@
 ;; differences are marked in comments
 (defn shortest-paths [grid]
   (let [target (target-pos grid)
+        start (start-pos grid)
         init {:pos (start-pos grid)
               :score 0
               :dir u/right
@@ -156,11 +143,9 @@
         (let [{:keys [pos score dir]} state
               id [pos dir]]
           (cond
-
             (= target pos)
             (if (or (nil? best-path-score)
                     (= score best-path-score))
-
               ;; collection solutions with the optimal score
               (recur (pop todo)
                      seen-states
@@ -172,15 +157,7 @@
               ;; we can stop once we get worse solutions
               {:stop best-paths})
 
-            (let [found (get seen-states id)]
-              (or
-               ;; disabled pruning of visited states as these could
-               ;; be reached via different paths and we want all paths
-               #_(:visited found)
-
-               ;; there is already a shorter path to this position
-               (> score
-                  (:score found Long/MAX_VALUE))))
+            (> score (:score (get seen-states id) Long/MAX_VALUE))
             (recur (pop todo)
                    seen-states
                    best-paths
@@ -190,7 +167,13 @@
             :else
             (let [succ (next-states grid state)]
               (recur (into (pop todo) succ)
-                     (update! seen-states id
+                     (if-let [seen (get seen-states id)]
+                       (let [best (:score seen  Long/MAX_VALUE)]
+                         (if (< score best)
+                           (assoc! seen-states id state))
+                         seen-states)
+                       (assoc! seen-states id state))
+                     #_(update! seen-states id
                               (fn [lowest]
                                 ;; replaced < with <= as we want to explore equally good solutions
                                 (assoc (if (<= score
@@ -218,6 +201,9 @@
 
 (comment
 
+  (-/jfr-record
+    (dotimes [i 10]
+      (part-2 (user/day-input))))
 
 
   )

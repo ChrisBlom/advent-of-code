@@ -85,11 +85,11 @@
   (let [ [cmd body] (if (keyword (first args))
                       [ (first args) (rest args)]
                       [ :neato args])]
-    `(show-dot
-      (with-out-str
+    `(show-dot (with-out-str
         (println "digraph {")
-        ~@body)
-        (println "}")
+        ~@body
+        (println "}"))
+      ~cmd
       )))
 
 
